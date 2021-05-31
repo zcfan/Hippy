@@ -42,7 +42,7 @@ public class TimingAnimation extends Animation implements ValueAnimator.Animator
   private static final String TIMING_FUNCTION_EASE_OUT = "ease-out";
   private static final String TIMING_FUNCTION_EASE_IN_OUT = "ease-in-out";
   private static final String TIMING_FUNCTION_EASE_BEZIER = "ease_bezier";
-  private static final Pattern TIMING_FUNCTION_CUBIC_BEZIER_PATTERN = Pattern.compile("^cubic-bezier\\(([+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)),([+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)),([+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)),([+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+))\\)$");
+  private static final Pattern TIMING_FUNCTION_CUBIC_BEZIER_PATTERN = Pattern.compile("^cubic-bezier\\(([^,]*),([^,]*),([^,]*),([^,]*)\\)$");
   protected float mStartValue;
   protected float mToValue;
   protected int mDuration;
@@ -192,12 +192,16 @@ public class TimingAnimation extends Animation implements ValueAnimator.Animator
     } else {
       Matcher matcher = TIMING_FUNCTION_CUBIC_BEZIER_PATTERN.matcher(mTimingFunction);
       if (matcher.matches()) {
-        this.setCubicBezierInterpolator(
-          Float.parseFloat(matcher.group(1)),
-          Float.parseFloat(matcher.group(2)),
-          Float.parseFloat(matcher.group(3)),
-          Float.parseFloat(matcher.group(4))
-        );
+        try {
+          this.setCubicBezierInterpolator(
+            Float.parseFloat(matcher.group(1)),
+            Float.parseFloat(matcher.group(2)),
+            Float.parseFloat(matcher.group(3)),
+            Float.parseFloat(matcher.group(4))
+          );
+        } catch (Exception e) {
+          mAnimator.setInterpolator(new LinearInterpolator());
+        }
       } else {
         mAnimator.setInterpolator(new LinearInterpolator());
       }
