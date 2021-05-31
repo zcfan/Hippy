@@ -245,22 +245,17 @@
 }
 
 - (nullable CAMediaTimingFunction *)makeCustomBezierFunction:(NSString *)timingFunction {
-    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"^cubic-bezier\\(([+-]?(?:[0-9]*[.])?[0-9]+),([+-]?(?:[0-9]*[.])?[0-9]+),([+-]?(?:[0-9]*[.])?[0-9]+),([+-]?(?:[0-9]*[.])?[0-9]+)\\)$" options:NSRegularExpressionCaseInsensitive error:nil];
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"^cubic-bezier\\(([^,]*),([^,]*),([^,]*),([^,]*)\\)$" options:NSRegularExpressionCaseInsensitive error:nil];
     if (!regex) return nil;
     NSRange searchedRange = NSMakeRange(0, [timingFunction length]);
-    NSTextCheckingResult *match = [regex matchesInString:timingFunction options:0 range: searchedRange][0];
-    NSString *matchText = [timingFunction substringWithRange:[match range]];
+    NSArray<NSTextCheckingResult *> *matches = [regex matchesInString:timingFunction options:0 range: searchedRange];
+    if (matches.count <= 0) return nil;
+    NSTextCheckingResult *match = matches[0];
     float (^getValue)(NSUInteger) = ^(NSUInteger index) {
         NSRange range = [match rangeAtIndex: index];
         NSString *numberString = [timingFunction substringWithRange:range];
         return [numberString floatValue];
     };
-    
-    NSLog(@"match: %@", matchText);
-    NSLog(@"p1x: %f", getValue(1));
-    NSLog(@"p1y: %f", getValue(2));
-    NSLog(@"p2x: %f", getValue(3));
-    NSLog(@"p2y: %f", getValue(4));
     return [CAMediaTimingFunction functionWithControlPoints:getValue(1) :getValue(2) :getValue(3) :getValue(4)];
 }
 
