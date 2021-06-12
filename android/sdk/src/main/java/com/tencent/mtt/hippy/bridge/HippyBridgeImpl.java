@@ -28,6 +28,7 @@ import com.tencent.mtt.hippy.utils.UrlUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Locale;
@@ -130,10 +131,21 @@ public class HippyBridgeImpl implements HippyBridge, DevRemoteDebugProxy.OnRecei
 
   private void initJSEngine(int groupId) {
     synchronized (HippyBridgeImpl.class) {
-      mV8RuntimeId = initJSFramework(mDebugGlobalConfig.getBytes(), mSingleThreadMode,
-          enableV8Serialization, mIsDevModule, mDebugInitJSFrameworkCallback, groupId);
-      mInit = true;
-    }
+      try {
+        byte[] globalConfig = mDebugGlobalConfig.getBytes("UTF-16LE");
+        mV8RuntimeId = initJSFramework(globalConfig, mSingleThreadMode, enableV8Serialization, mIsDevModule, mDebugInitJSFrameworkCallback, groupId);
+        mInit = true;
+      } catch (Throwable e) {
+        if (mBridgeCallback != null) {
+          mBridgeCallback.reportException(e);
+        }
+      }
+		}
+	}
+
+  @Override
+  public long getV8RuntimeId() {
+    return mV8RuntimeId;
   }
 
   @Override
@@ -154,7 +166,9 @@ public class HippyBridgeImpl implements HippyBridge, DevRemoteDebugProxy.OnRecei
         ret = runScriptFromUri(uri, assetManager, false, "" + codeCacheTag + File.separator,
             mV8RuntimeId, callback);
       } catch (Throwable e) {
-        LogUtils.e("HippyBridgeImpl", "runScriptFromUri:" + e.getMessage());
+        if (mBridgeCallback != null) {
+          mBridgeCallback.reportException(e);
+        }
       }
       return ret;
     }
@@ -302,8 +316,9 @@ public class HippyBridgeImpl implements HippyBridge, DevRemoteDebugProxy.OnRecei
               buffer.put(resBytes);
               onResourceReady(buffer, mV8RuntimeId, resId);
             } catch (Throwable e) {
-              LogUtils
-                  .e("HippyBridgeImpl", "fetchResourceWithUri: load failed!!! " + e.getMessage());
+              if (mBridgeCallback != null) {
+                mBridgeCallback.reportException(e);
+              }
               onResourceReady(null, mV8RuntimeId, resId);
             }
           }
@@ -364,21 +379,25 @@ public class HippyBridgeImpl implements HippyBridge, DevRemoteDebugProxy.OnRecei
     return hippyParam == null ? new HippyArray() : hippyParam;
   }
 
-  public void reportException(String exception, String stackTrace) {
+  public void reportException(String message, String stackTrace) {
     LogUtils.e("reportException", "!!!!!!!!!!!!!!!!!!!");
 
-    LogUtils.e("reportException", exception);
+    LogUtils.e("reportException", message);
     LogUtils.e("reportException", stackTrace);
 
     if (mBridgeCallback != null) {
-      mBridgeCallback.reportException(exception, stackTrace);
+      mBridgeCallback.reportException(message, stackTrace);
     }
   }
 
   @Override
   public void onReceiveData(String msg) {
     if (this.mIsDevModule) {
-      callFunction("onWebsocketMsg", null, msg.getBytes());
+      try {
+        callFunction("onWebsocketMsg", null, msg.getBytes("UTF-16LE"));
+      } catch (UnsupportedEncodingException e) {
+        e.printStackTrace();
+      }
     }
   }
 }
